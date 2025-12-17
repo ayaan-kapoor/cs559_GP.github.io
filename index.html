@@ -29,7 +29,15 @@
         background: #444; color: white; border: 2px solid #666; transition: 0.3s;
     }
     .menu-btn:hover { background: #007bff; border-color: white; }
-
+    /* Add this to your <style> section */
+.menu-group-id {
+    position: absolute;
+    top: 20px;
+    font-size: 28px;
+    font-weight: bold;
+    color: #007bff; /* Matching the title color */
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+}
     /* Shop Button Styling */
     .shop-btn {
         background: #444; color: white; border: 2px solid #888; padding: 15px; 
@@ -54,9 +62,10 @@
 </style>
 </head>
 <body>
-    <div id="group-id">GROUP ID: 1234</div>
+    <div id="group-id">GROUP ID: 6710</div>
 
     <div id="main-menu">
+        
         <h1 style="font-size: 60px; margin-bottom: 10px; color: #007bff;">PRIMAL STRIKE</h1>
         <div style="margin-bottom: 30px; text-align: center; color: #ccc; line-height: 1.6;">
             <p><b>WASD</b> to Move | <b>Mouse</b> to Aim | <b>Left Click</b> to Attack</p>
@@ -64,6 +73,7 @@
         </div>
         <button class="menu-btn" onclick="startGame(false)">PLAY PROTOTYPE</button>
         <button class="menu-btn" onclick="startGame(true)" style="background: #007bff;">PLAY FULL MODE</button>
+        <div class="menu-group-id">GROUP ID: 6710</div>
     </div>
 
     <div id="hp-bar-container">
