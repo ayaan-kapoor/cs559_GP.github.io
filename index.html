@@ -9,6 +9,12 @@
     canvas { display: block; }
     #group-id { position: absolute; top: 10px; left: 10px; color: white; font-size: 24px; z-index: 10; }
     
+
+    #game-over-screen {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.9); color: white; display: none;
+    flex-direction: column; justify-content: center; align-items: center; z-index: 500;
+}
     /* HP Bar Styling */
     #hp-bar-container {
         position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
@@ -64,17 +70,32 @@
 <body>
     <div id="group-id">GROUP ID: 6710</div>
 
-    <div id="main-menu">
-        
-        <h1 style="font-size: 60px; margin-bottom: 10px; color: #007bff;">PRIMAL STRIKE</h1>
-        <div style="margin-bottom: 30px; text-align: center; color: #ccc; line-height: 1.6;">
-            <p><b>WASD</b> to Move | <b>Mouse</b> to Aim | <b>Left Click</b> to Attack</p>
-            <p>Defeat enemies to open the portal and upgrade your stats!</p>
-        </div>
+<div id="main-menu">
+    <h1 style="font-size: 60px; margin-bottom: 10px; color: #007bff;">PRIMAL STRIKE</h1>
+    
+    <div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 15px; margin-bottom: 30px; text-align: center; max-width: 600px;">
+        <h2 style="color: #00ffff; margin-top: 0;">HOW TO PLAY</h2>
+        <ul style="text-align: left; color: #ccc; line-height: 1.4; font-size: 16px;">
+            <li><b>Objective:</b> Eliminate the required number of enemies to open the <b>Cyan Portal</b>. Reach the portal to advance levels.</li>
+            <li><b>Movement:</b> Use <b>WASD</b> to move and your <b>Mouse</b> to aim your strike.</li>
+            <li><b>Combat:</b> <b>Left Click</b> to attack. Defeated enemies drop currency.</li>
+            <li>Every level is <b>randomly generated</b> with unique wall layouts and enemy counts.</li>
+            <li><b>The Shop:</b> Use collected currency in the <b>Shop</b> to upgrade your Max HP, Attack Range, or Movement Speed.</li>
+        </ul>
+    </div>
+
+    <div style="display: flex; gap: 10px;">
         <button class="menu-btn" onclick="startGame(false)">PLAY PROTOTYPE</button>
         <button class="menu-btn" onclick="startGame(true)" style="background: #007bff;">PLAY FULL MODE</button>
-        <div class="menu-group-id">GROUP ID: 6710</div>
     </div>
+    <div class="menu-group-id">GROUP ID: 6710</div>
+</div>
+<div id="game-over-screen">
+    <h1 style="color: #ff0000; font-size: 60px;">YOU DIED</h1>
+    <p style="font-size: 24px;">Level Reached: <span id="final-level">1</span></p>
+    <button class="menu-btn" onclick="restartLevel()" style="background: #28a745;">RESTART LEVEL</button>
+    <button class="menu-btn" onclick="location.reload()">MAIN MENU</button>
+</div>
 
     <div id="hp-bar-container">
         <div id="hp-bar-fill"></div>
@@ -127,7 +148,7 @@
         let isLevelCleared = false; 
         let isPaused = false; 
         const ATTACK_DURATION = 150; 
-        const ATTACK_COOLDOWN = 300; 
+        const ATTACK_COOLDOWN = 200; 
         let CONE_RADIUS = 2.5; 
         let CONE_HEIGHT = 3.5; 
 
@@ -152,7 +173,7 @@
 const attackSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3');
 
         // --- Difficulty Scaling ---
-        function getEnemySpeed(level) { return 0.08 + (level * 0.01); }
+        function getEnemySpeed(level) { return 0.1 + (level * 0.0075); }
         function getEnemyHP(level) { return 1 + Math.floor(level / 2); }
         function getEnemyCurrencyDrop(level) { return 1 + Math.floor(level / 5); }
         
@@ -481,40 +502,56 @@ function createDamageCone() {
             healthKits = [];
         }
 
-        function generateLevelSet() {
-            const currentOffset = 0;
-            const nextLevelOffset = -LEVEL_WIDTH; 
-            
-            clearLevelMeshes();
-            createDamageCone(); 
-            
-            createProceduralLevel(currentOffset, MAP_SIZE, true);
-            createProceduralLevel(nextLevelOffset, MAP_SIZE, false);
-            
-            createAmbientParticles(50);
-            
-            // Scatter health kits
-            const numHealthKits = 3;
-            for(let i = 0; i < numHealthKits; i++) {
-                createHealthKit(Math.random() * 40 - 20, Math.random() * 40 - 20); 
-            }
+function generateLevelSet() {
+    clearLevelMeshes();
+    createDamageCone(); 
+    
+    createProceduralLevel(0, MAP_SIZE, true);
+    createAmbientParticles(30);
+    
+    // Scatter health kits sparingly
+    for(let i = 0; i < 2; i++) {
+        createHealthKit(Math.random() * 40 - 20, Math.random() * 40 - 20); 
+    }
 
-            const numEnemiesToSpawn = maxKills; 
-            for (let i = 0; i < numEnemiesToSpawn; i++) {
-        // 70% chance for basic, 30% for shooter
-        if (Math.random() > 0.3) {
-            spawnEnemy(currentOffset, 0, 0);
+    // POPULATE ENTIRE MAP
+    for (let i = 0; i < maxKills; i++) {
+        const x = Math.random() * 40 - 20;
+        const z = Math.random() * 40 - 20;
+        
+        // Don't spawn exactly on the player
+        if (Math.abs(x) < 5 && Math.abs(z) < 5) continue;
+
+        if (Math.random() > 0.4) {
+            spawnEnemy(x, 0.5, z);
         } else {
-            spawnEnemy2(currentOffset, 0, 0);
+            spawnEnemy2(x, 0.5, z);
         }
     }
-        }
-        
-        function createProceduralLevel(xOffset, size, isCurrentLevel) {
-            const wallMaterial = getWallMaterial();
-            const WALL_HEIGHT = 2;
-            
-            const boundarySegments = [
+}
+
+function spawnEnemy(x, y, z) {
+    const enemyGeometry = new THREE.BoxGeometry(1, 1, 1);
+    const enemyMaterial = getEnemyMaterial();
+    const newEnemy = new THREE.Mesh(enemyGeometry, enemyMaterial);
+    
+    newEnemy.position.set(x, 0.5, z);
+    newEnemy.userData = {
+        alive: true,
+        isAwake: false, // Starts idle
+        speed: getEnemySpeed(currentLevel) * 1.2,
+        hp: 1, // One hit kills (Hotline Miami style)
+        type: 'basic'
+    };
+    enemies.push(newEnemy);
+    scene.add(newEnemy);
+}
+
+function createProceduralLevel(xOffset, size, isCurrentLevel) {
+    const wallMaterial = getWallMaterial();
+    const WALL_HEIGHT = 2;
+
+    const boundarySegments = [
                 [xOffset, size, size * 2, 1], 
                 [xOffset, -size, size * 2, 1], 
                 [xOffset + size, 0, 1, size * 2], 
@@ -567,22 +604,61 @@ function createDamageCone() {
         }
         
 // Standard Melee Enemy
-function spawnEnemy(x, y, z) {
-    if (isLevelCleared) return;
-    const geo = new THREE.BoxGeometry(1, 1, 1);
-    const mat = getEnemyMaterial();
-    const enemy = new THREE.Mesh(geo, mat);
-    
-    enemy.position.set(x + Math.random() * 5, 0.5, z + Math.random() * 5);
-    enemy.userData = {
-        alive: true,
-        hp: getEnemyHP(currentLevel),
-        speed: getEnemySpeed(currentLevel),
-        type: 'basic'
-    };
-    
-    enemies.push(enemy);
-    scene.add(enemy);
+
+function moveEnemies(deltaTime) {
+    const avoidanceDistance = 1.5; // Distance to detect walls
+    const raycaster = new THREE.Raycaster();
+
+    for (let i = enemies.length - 1; i >= 0; i--) {
+        const enemy = enemies[i];
+        if (!enemy.userData.alive) continue;
+
+        // 1. Calculate the ideal direction to the player
+        const toPlayer = new THREE.Vector3().subVectors(player.position, enemy.position);
+        toPlayer.y = 0;
+        const dirToPlayer = toPlayer.clone().normalize();
+
+        // 2. Wall Detection (Raycasting)
+        // We cast a ray from the enemy toward the player
+        raycaster.set(enemy.position, dirToPlayer);
+        const wallIntersections = raycaster.intersectObjects(walls);
+        
+        let finalMoveDir = dirToPlayer.clone();
+
+        if (wallIntersections.length > 0 && wallIntersections[0].distance < avoidanceDistance) {
+            // A wall is blocking the direct path! 
+            // Get the wall's face normal to calculate a "slide" vector
+            const wallNormal = wallIntersections[0].face.normal.clone();
+            
+            // Calculate a vector that is perpendicular to the wall normal (the slide path)
+            const slideDir = new THREE.Vector3().crossVectors(wallNormal, new THREE.Vector3(0, 1, 0));
+            
+            // Choose the slide direction (left or right) that still moves toward the player
+            if (slideDir.dot(dirToPlayer) < 0) slideDir.multiplyScalar(-1);
+            
+            // Blend the slide direction so they try to go around the corner
+            finalMoveDir.addScaledVector(slideDir, 2).normalize();
+        }
+
+        // 3. Separation (Don't let enemies stack on top of each other)
+        enemies.forEach(other => {
+            if (other === enemy) return;
+            const dist = enemy.position.distanceTo(other.position);
+            if (dist < 1.2) {
+                const separation = new THREE.Vector3().subVectors(enemy.position, other.position).normalize();
+                finalMoveDir.addScaledVector(separation, 0.5);
+            }
+        });
+
+        // 4. Apply Final Movement
+        finalMoveDir.normalize();
+        enemy.position.addScaledVector(finalMoveDir, enemy.userData.speed * deltaTime * 60);
+
+        // 5. Look toward the movement direction
+        const lookTarget = enemy.position.clone().add(finalMoveDir);
+        enemy.lookAt(lookTarget);
+    }
+    checkEnemyPlayerCollision();
 }
 
 // NEW: Projectile Shooter Enemy
@@ -607,6 +683,27 @@ function spawnEnemy2(x, y, z) {
 
 }
 
+let lastSpawnTime = 0;
+const SPAWN_INTERVAL = 2.0; 
+
+function handleProximitySpawns(time) {
+    if (killCount + enemies.length < maxKills) {
+        if (time - lastSpawnTime > SPAWN_INTERVAL) {
+            const angle = Math.random() * Math.PI * 2;
+            const dist = 10 + Math.random() * 5; // Spawn 10-15 units away
+            const spawnX = player.position.x + Math.cos(angle) * dist;
+            const spawnZ = player.position.z + Math.sin(angle) * dist;
+
+            // Simple boundary check
+            if (Math.abs(spawnX) < MAP_SIZE && Math.abs(spawnZ) < MAP_SIZE) {
+                Math.random() > 0.3 ? spawnEnemy(spawnX, 0.5, spawnZ) : spawnEnemy2(spawnX, 0.5, spawnZ);
+                lastSpawnTime = time;
+            }
+        }
+    }
+}
+
+
 
 function spawnProjectile(startPos, targetPos) {
     const geo = new THREE.SphereGeometry(0.2);
@@ -621,23 +718,32 @@ function spawnProjectile(startPos, targetPos) {
     projectiles.push(bullet);
     scene.add(bullet);
 }
-
 function handleProjectiles() {
     for (let i = projectiles.length - 1; i >= 0; i--) {
         const p = projectiles[i];
         p.position.add(p.userData.velocity);
-        
-        // Check collision with player
-        const dist = p.position.distanceTo(player.position);
-        if (dist < 0.8) {
-            takeDamage(1);
+
+        const projectileBox = new THREE.Box3().setFromObject(p);
+
+        // Check for Wall Collisions
+        let hitWall = false;
+        for (const wall of walls) {
+            const wallBox = new THREE.Box3().setFromObject(wall);
+            if (projectileBox.intersectsBox(wallBox)) {
+                hitWall = true;
+                break;
+            }
+        }
+
+        if (hitWall) {
             scene.remove(p);
             projectiles.splice(i, 1);
             continue;
         }
-        
-        // Cleanup if out of bounds
-        if (p.position.length() > 100) {
+
+        // Check for Player Collisions
+        if (p.position.distanceTo(player.position) < 0.8) {
+            takeDamage(1);
             scene.remove(p);
             projectiles.splice(i, 1);
         }
@@ -782,24 +888,46 @@ function goToNextLevel() {
             }
         }
 
-        function moveEnemies(deltaTime) {
-            for (let i = enemies.length - 1; i >= 0; i--) {
-                const enemy = enemies[i];
-                if (!enemy.userData.alive) continue;
-                
-                const direction = new THREE.Vector3().subVectors(player.position, enemy.position);
-                direction.y = 0;
-                direction.normalize();
+function moveEnemies(deltaTime) {
+    for (let i = enemies.length - 1; i >= 0; i--) {
+        const enemy = enemies[i];
+        if (!enemy.userData.alive) continue;
 
-                enemy.position.addScaledVector(direction, enemy.userData.speed * deltaTime * 60);
+        // 1. Basic Chase Movement
+        const direction = new THREE.Vector3().subVectors(player.position, enemy.position);
+        direction.y = 0;
+        direction.normalize();
+        
+        const moveStep = enemy.userData.speed * deltaTime * 60;
+        enemy.position.addScaledVector(direction, moveStep);
 
-                const targetPoint = player.position.clone();
-                targetPoint.y = enemy.position.y;
-                enemy.lookAt(targetPoint);
+        // 2. Wall Collision Handling (Mirroring Player Logic)
+        const enemyBox = new THREE.Box3().setFromObject(enemy);
+        const displacement = 0.05;
+
+        for (const wall of walls) {
+            const wallBox = new THREE.Box3().setFromObject(wall);
+            if (enemyBox.intersectsBox(wallBox)) {
+                const dx = Math.min(enemyBox.max.x - wallBox.min.x, wallBox.max.x - enemyBox.min.x);
+                const dz = Math.min(enemyBox.max.z - wallBox.min.z, wallBox.max.z - enemyBox.min.z);
+
+                if (dx < dz) {
+                    enemy.position.x += (enemyBox.max.x > wallBox.min.x && enemyBox.max.x < wallBox.max.x) ? -(dx + displacement) : (dx + displacement);
+                } else {
+                    enemy.position.z += (enemyBox.max.z > wallBox.min.z && enemyBox.max.z < wallBox.max.z) ? -(dz + displacement) : (dz + displacement);
+                }
+                // Update box for next wall check
+                enemyBox.setFromObject(enemy);
             }
-            checkEnemyPlayerCollision();
         }
 
+        // 3. Look at Player
+        const targetPoint = player.position.clone();
+        targetPoint.y = enemy.position.y;
+        enemy.lookAt(targetPoint);
+    }
+    checkEnemyPlayerCollision();
+}
         function animateFullModeSlash() {
              const slashGeo = new THREE.PlaneGeometry(CONE_HEIGHT * 2.0, 0.5); 
              const slashMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 1 });
@@ -918,6 +1046,27 @@ if(atkBtn) { // Add this check
     atkBtn.addEventListener('touchstart', startAttack, false);
     atkBtn.addEventListener('mousedown', startAttack, false);
 }
+
+function gameOver() {
+    isGameOver = true;
+    document.getElementById('final-level').innerText = currentLevel;
+    document.getElementById('game-over-screen').style.display = 'flex';
+}
+
+function restartLevel() {
+    isGameOver = false;
+    document.getElementById('game-over-screen').style.display = 'none';
+    playerHP = PLAYER_MAX_HP;
+    killCount = 0;
+    lastSpawnTime = 0;
+    
+    // Reset player position
+    player.position.set(0, 0.75, 0);
+    
+    // Clear and respawn initial level state
+    generateLevelSet();
+    updateUI();
+}
         // --- Initialization and Loop ---
 
 function init() {
@@ -948,7 +1097,6 @@ function init() {
     // We do NOT call generateLevelSet here anymore
     animate();
 }
-        
 function animate() {
     requestAnimationFrame(animate);
     if (document.getElementById('main-menu').style.display !== 'none') return;
@@ -958,21 +1106,24 @@ function animate() {
     const time = clock.getElapsedTime();
 
     handlePlayerMovement(deltaTime);
-    moveEnemies(deltaTime); // This handles movement for all types
-    handleProjectiles();     // Process moving bullets
+    moveEnemies(deltaTime);        // Collision fixed here
+    handleProjectiles();
+    handleProximitySpawns(time);   // New mid-round reinforcements
     animateAmbientParticles(); 
 
-    // Shooter-specific Shooting AI
-    enemies.forEach(enemy => {
-        if (enemy.userData.type === 'shooter' && enemy.userData.alive) {
-            const dist = enemy.position.distanceTo(player.position);
-            // Shoot if player is within range and cooldown is over
-            if (dist < 12 && time - enemy.userData.lastShot > 2.0) {
-                spawnProjectile(enemy.position, player.position);
-                enemy.userData.lastShot = time;
-            }
+
+// Inside your animate() function:
+enemies.forEach(enemy => {
+    if (enemy.userData.type === 'shooter' && enemy.userData.alive) {
+        const dist = enemy.position.distanceTo(player.position);
+        
+        // Purple shooters now fire if you are within 15 units
+        if (dist < 15 && (time - (enemy.userData.lastShot || 0)) > 1.5) {
+            spawnProjectile(enemy.position, player.position);
+            enemy.userData.lastShot = time; // Record the time of the shot
         }
-    });
+    }
+});
 
     camera.position.x = player.position.x;
     camera.position.z = player.position.z;
